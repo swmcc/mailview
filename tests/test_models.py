@@ -38,6 +38,27 @@ class TestAttachment:
         # Content should not be in dict
         assert "content" not in data
 
+    def test_attachment_from_dict(self):
+        """Test attachment deserialization from dict."""
+        data = {
+            "filename": "doc.pdf",
+            "content_type": "application/pdf",
+            "size": 512,
+        }
+        attachment = Attachment.from_dict(data)
+        assert attachment.filename == "doc.pdf"
+        assert attachment.content_type == "application/pdf"
+        assert attachment.size == 512
+        assert attachment.content == b""
+
+    def test_attachment_from_dict_minimal(self):
+        """Test attachment deserialization with minimal data."""
+        attachment = Attachment.from_dict({})
+        assert attachment.filename == ""
+        assert attachment.content_type == ""
+        assert attachment.size == 0
+        assert attachment.content == b""
+
 
 class TestEmail:
     """Tests for Email model."""
@@ -257,3 +278,43 @@ class TestEmailSerialization:
         assert restored.html_body == original.html_body
         assert restored.text_body == original.text_body
         assert restored.headers == original.headers
+
+    def test_roundtrip_serialization_with_attachments(self):
+        """Test serialize then deserialize preserves attachment metadata."""
+        original = Email(
+            id="roundtrip-attachments",
+            subject="Attachment Roundtrip",
+            attachments=[
+                Attachment(
+                    filename="report.pdf",
+                    content_type="application/pdf",
+                    size=4096,
+                    content=b"binary content",
+                )
+            ],
+        )
+        json_str = original.to_json()
+        restored = Email.from_json(json_str)
+
+        assert len(restored.attachments) == 1
+        assert restored.attachments[0].filename == "report.pdf"
+        assert restored.attachments[0].content_type == "application/pdf"
+        assert restored.attachments[0].size == 4096
+        # Content is not serialized; restored attachment has empty content
+        assert restored.attachments[0].content == b""
+
+    def test_from_dict_with_attachments(self):
+        """Test deserialization from dict containing attachment metadata."""
+        data = {
+            "id": "with-attachments",
+            "subject": "Has Attachments",
+            "attachments": [
+                {"filename": "a.txt", "content_type": "text/plain", "size": 10},
+                {"filename": "b.png", "content_type": "image/png", "size": 200},
+            ],
+        }
+        email = Email.from_dict(data)
+        assert len(email.attachments) == 2
+        assert email.attachments[0].filename == "a.txt"
+        assert email.attachments[1].filename == "b.png"
+        assert email.attachments[1].size == 200

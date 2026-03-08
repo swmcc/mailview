@@ -26,6 +26,16 @@ class Attachment:
             "size": self.size,
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Attachment:
+        """Create Attachment from dict (metadata only; content defaults to empty bytes)."""
+        return cls(
+            filename=data.get("filename", ""),
+            content_type=data.get("content_type", ""),
+            size=data.get("size", 0),
+            content=b"",
+        )
+
 
 @dataclass
 class Email:
@@ -140,7 +150,9 @@ class Email:
             html_body=data.get("html_body"),
             text_body=data.get("text_body"),
             headers=headers,
-            attachments=[],  # Attachments loaded separately
+            attachments=[
+                Attachment.from_dict(a) for a in data.get("attachments", [])
+            ],
             created_at=created_at,
         )
 

@@ -19,7 +19,7 @@
   <a href="https://pypi.org/project/mailview/"><img src="https://img.shields.io/pypi/v/mailview" alt="PyPI"></a>
   <a href="https://pypi.org/project/mailview/"><img src="https://img.shields.io/pypi/pyversions/mailview" alt="Python"></a>
   <a href="https://codecov.io/gh/swmcc/mailview"><img src="https://codecov.io/gh/swmcc/mailview/branch/main/graph/badge.svg" alt="Coverage"></a>
-  <a href="https://github.com/swmcc/mailview/blob/main/LICENSE"><img src="https://img.shields.io/github/license/swmcc/mailview" alt="License"></a>
+  <a href="https://github.com/swmcc/mailview/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
 </p>
 
 ## Installation

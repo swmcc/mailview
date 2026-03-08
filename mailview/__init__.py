@@ -2,6 +2,7 @@
 
 from mailview.backend import MailviewBackend, capture_email
 from mailview.models import Attachment, Email
+from mailview.router import MailviewRouter, create_routes
 from mailview.store import EmailStore
 
 __version__ = "0.1.0"
@@ -12,5 +13,7 @@ __all__ = [
     "Attachment",
     "EmailStore",
     "MailviewBackend",
+    "MailviewRouter",
     "capture_email",
+    "create_routes",
 ]

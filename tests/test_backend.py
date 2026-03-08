@@ -1,0 +1,402 @@
+"""Tests for email capture backend."""
+
+import tempfile
+from email.message import EmailMessage
+from pathlib import Path
+
+import pytest
+
+from mailview.backend import MailviewBackend, capture_email
+from mailview.models import Email
+from mailview.store import EmailStore
+
+
+@pytest.fixture
+def temp_db_path():
+    """Create a temporary database path."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield str(Path(tmpdir) / "test.db")
+
+
+@pytest.fixture
+def store(temp_db_path):
+    """Create a store with temporary database."""
+    return EmailStore(db_path=temp_db_path)
+
+
+@pytest.fixture
+def backend(store):
+    """Create a backend with test store."""
+    return MailviewBackend(store=store)
+
+
+class TestMailviewBackendInit:
+    """Tests for backend initialization."""
+
+    def test_creates_default_store(self):
+        """Test that backend creates default store if none provided."""
+        backend = MailviewBackend()
+        assert backend.store is not None
+
+    def test_uses_provided_store(self, store):
+        """Test that backend uses provided store."""
+        backend = MailviewBackend(store=store)
+        assert backend.store is store
+
+
+class TestParseMessage:
+    """Tests for parsing email messages."""
+
+    def test_parse_simple_text_email(self, backend):
+        """Test parsing a simple plaintext email."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "Test Subject"
+        msg.set_content("Hello, World!")
+
+        email = backend.parse_message(msg)
+
+        assert email.sender == "sender@example.com"
+        assert email.to == ["recipient@example.com"]
+        assert email.subject == "Test Subject"
+        assert email.text_body == "Hello, World!\n"
+        assert email.html_body is None
+
+    def test_parse_html_email(self, backend):
+        """Test parsing HTML-only email."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "HTML Email"
+        msg.set_content("<p>Hello, World!</p>", subtype="html")
+
+        email = backend.parse_message(msg)
+
+        assert email.html_body == "<p>Hello, World!</p>\n"
+        assert email.text_body is None
+
+    def test_parse_multipart_email(self, backend):
+        """Test parsing multipart email with both HTML and text."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "Multipart Email"
+        msg.set_content("Plain text version")
+        msg.add_alternative("<p>HTML version</p>", subtype="html")
+
+        email = backend.parse_message(msg)
+
+        assert email.text_body == "Plain text version\n"
+        assert email.html_body == "<p>HTML version</p>\n"
+
+    def test_parse_multiple_recipients(self, backend):
+        """Test parsing email with multiple recipients."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "one@example.com, two@example.com"
+        msg["Cc"] = "cc@example.com"
+        msg["Bcc"] = "bcc1@example.com, bcc2@example.com"
+        msg["Subject"] = "Multi-recipient"
+        msg.set_content("Hello")
+
+        email = backend.parse_message(msg)
+
+        assert email.to == ["one@example.com", "two@example.com"]
+        assert email.cc == ["cc@example.com"]
+        assert email.bcc == ["bcc1@example.com", "bcc2@example.com"]
+
+    def test_parse_with_attachment(self, backend):
+        """Test parsing email with attachment."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "With Attachment"
+        msg.set_content("See attached file")
+        msg.add_attachment(
+            b"file content here",
+            maintype="application",
+            subtype="octet-stream",
+            filename="test.bin",
+        )
+
+        email = backend.parse_message(msg)
+
+        assert email.text_body == "See attached file\n"
+        assert len(email.attachments) == 1
+        assert email.attachments[0].filename == "test.bin"
+        assert email.attachments[0].content == b"file content here"
+        assert email.attachments[0].size == 17
+
+    def test_parse_with_multiple_attachments(self, backend):
+        """Test parsing email with multiple attachments."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "Multiple Attachments"
+        msg.set_content("Files attached")
+        msg.add_attachment(
+            b"text content", maintype="text", subtype="plain", filename="doc.txt"
+        )
+        msg.add_attachment(
+            b"image data", maintype="image", subtype="png", filename="image.png"
+        )
+
+        email = backend.parse_message(msg)
+
+        assert len(email.attachments) == 2
+        assert email.attachments[0].filename == "doc.txt"
+        assert email.attachments[1].filename == "image.png"
+
+    def test_parse_extracts_headers(self, backend):
+        """Test that custom headers are extracted."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "Headers Test"
+        msg["X-Custom-Header"] = "custom value"
+        msg["X-Priority"] = "1"
+        msg.set_content("Body")
+
+        email = backend.parse_message(msg)
+
+        assert "X-Custom-Header" in email.headers
+        assert email.headers["X-Custom-Header"] == "custom value"
+        assert email.headers["X-Priority"] == "1"
+        # Standard headers should be excluded
+        assert "From" not in email.headers
+        assert "To" not in email.headers
+        assert "Subject" not in email.headers
+
+    def test_parse_with_sender_override(self, backend):
+        """Test that sender can be overridden."""
+        msg = EmailMessage()
+        msg["From"] = "original@example.com"
+        msg["To"] = "recipient@example.com"
+        msg.set_content("Body")
+
+        email = backend.parse_message(msg, sender="override@example.com")
+
+        assert email.sender == "override@example.com"
+
+    def test_parse_with_recipients_override(self, backend):
+        """Test that recipients can be overridden."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "original@example.com"
+        msg["Cc"] = "cc@example.com"
+        msg.set_content("Body")
+
+        email = backend.parse_message(msg, recipients=["override@example.com"])
+
+        assert email.to == ["override@example.com"]
+        assert email.cc == []  # Cleared when recipients overridden
+        assert email.bcc == []
+
+
+class TestSend:
+    """Tests for sending (capturing) emails."""
+
+    async def test_send_stores_email(self, backend, store):
+        """Test that send stores the email."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "Stored Email"
+        msg.set_content("This should be stored")
+
+        email = await backend.send(msg)
+
+        assert email.id is not None
+        stored = await store.get_by_id(email.id)
+        assert stored is not None
+        assert stored.subject == "Stored Email"
+
+    async def test_send_returns_email(self, backend):
+        """Test that send returns the captured email."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg.set_content("Body")
+
+        email = await backend.send(msg)
+
+        assert isinstance(email, Email)
+        assert email.sender == "sender@example.com"
+
+    async def test_send_with_overrides(self, backend, store):
+        """Test send with sender and recipient overrides."""
+        msg = EmailMessage()
+        msg["From"] = "original@example.com"
+        msg["To"] = "original-to@example.com"
+        msg.set_content("Body")
+
+        email = await backend.send(
+            msg,
+            sender="override-sender@example.com",
+            recipients=["override-to@example.com"],
+        )
+
+        assert email.sender == "override-sender@example.com"
+        assert email.to == ["override-to@example.com"]
+
+
+class TestCaptureEmailFunction:
+    """Tests for the convenience capture_email function."""
+
+    async def test_capture_email_basic(self, store):
+        """Test basic email capture."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "Convenience Function"
+        msg.set_content("Test body")
+
+        email = await capture_email(msg, store=store)
+
+        assert email.subject == "Convenience Function"
+        stored = await store.get_by_id(email.id)
+        assert stored is not None
+
+    async def test_capture_email_with_overrides(self, store):
+        """Test capture with overrides."""
+        msg = EmailMessage()
+        msg["From"] = "original@example.com"
+        msg["To"] = "original@example.com"
+        msg.set_content("Body")
+
+        email = await capture_email(
+            msg,
+            store=store,
+            sender="new-sender@example.com",
+            recipients=["new-recipient@example.com"],
+        )
+
+        assert email.sender == "new-sender@example.com"
+        assert email.to == ["new-recipient@example.com"]
+
+
+class TestEdgeCases:
+    """Tests for edge cases."""
+
+    def test_parse_empty_recipients(self, backend):
+        """Test parsing with no recipients."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg.set_content("No recipients")
+
+        email = backend.parse_message(msg)
+
+        assert email.to == []
+        assert email.cc == []
+        assert email.bcc == []
+
+    def test_parse_no_subject(self, backend):
+        """Test parsing with no subject."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg.set_content("No subject")
+
+        email = backend.parse_message(msg)
+
+        assert email.subject == ""
+
+    def test_parse_no_body(self, backend):
+        """Test parsing message with no body."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "Empty"
+
+        email = backend.parse_message(msg)
+
+        assert email.text_body is None
+        assert email.html_body is None
+
+    def test_parse_attachment_no_filename(self, backend):
+        """Test parsing attachment without filename."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg.set_content("Body")
+        msg.add_attachment(b"data", maintype="application", subtype="octet-stream")
+
+        email = backend.parse_message(msg)
+
+        assert len(email.attachments) == 1
+        assert email.attachments[0].filename == "unnamed"
+
+    def test_parse_recipients_override_empty_list(self, backend):
+        """Test that empty list override clears recipients."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "original@example.com"
+        msg.set_content("Body")
+
+        email = backend.parse_message(msg, recipients=[])
+
+        assert email.to == []
+
+    def test_parse_recipients_override_string(self, backend):
+        """Test that string recipient is normalized to list."""
+        msg = EmailMessage()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "original@example.com"
+        msg.set_content("Body")
+
+        email = backend.parse_message(msg, recipients="single@example.com")
+
+        assert email.to == ["single@example.com"]
+
+
+class TestLegacyMessage:
+    """Tests for legacy email.message.Message support."""
+
+    def test_parse_legacy_message(self, backend):
+        """Test parsing a legacy Message built from string."""
+        from email import message_from_string
+
+        raw = """\
+From: sender@example.com
+To: recipient@example.com
+Subject: Legacy Message
+Content-Type: text/plain; charset="utf-8"
+
+This is the body."""
+
+        msg = message_from_string(raw)
+        email = backend.parse_message(msg)
+
+        assert email.sender == "sender@example.com"
+        assert email.to == ["recipient@example.com"]
+        assert email.subject == "Legacy Message"
+        assert "This is the body." in email.text_body
+
+    def test_parse_legacy_multipart(self, backend):
+        """Test parsing a legacy multipart Message."""
+        from email import message_from_string
+
+        raw = """\
+From: sender@example.com
+To: recipient@example.com
+Subject: Multipart Legacy
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="boundary123"
+
+--boundary123
+Content-Type: text/plain; charset="utf-8"
+
+Plain text body
+--boundary123
+Content-Type: text/html; charset="utf-8"
+
+<p>HTML body</p>
+--boundary123--"""
+
+        msg = message_from_string(raw)
+        email = backend.parse_message(msg)
+
+        assert email.sender == "sender@example.com"
+        assert "Plain text body" in email.text_body
+        assert "<p>HTML body</p>" in email.html_body

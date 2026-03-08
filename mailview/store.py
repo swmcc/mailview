@@ -120,6 +120,27 @@ class EmailStore:
 
             await db.commit()
 
+    async def get_attachment_counts(self) -> dict[str, int]:
+        """Get attachment counts for all emails.
+
+        Returns:
+            Dict mapping email_id to attachment count
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                """
+                SELECT email_id, COUNT(*) as count
+                FROM attachments
+                GROUP BY email_id
+                """
+            )
+            rows = await cursor.fetchall()
+            await cursor.close()
+
+        return {row[0]: row[1] for row in rows}
+
     async def get_all(self) -> list[Email]:
         """Get all emails, ordered by created_at descending.
 

@@ -275,3 +275,48 @@ class TestEmailStoreCount:
             await store.save(Email(id=f"email-{i}"))
         count = await store.count()
         assert count == 7
+
+
+class TestEmailStoreGetAttachmentCounts:
+    """Tests for getting attachment counts."""
+
+    async def test_empty_store(self, store):
+        """Test attachment counts on empty store."""
+        counts = await store.get_attachment_counts()
+        assert counts == {}
+
+    async def test_emails_without_attachments(self, store):
+        """Test attachment counts for emails without attachments."""
+        await store.save(Email(id="email-1"))
+        await store.save(Email(id="email-2"))
+        counts = await store.get_attachment_counts()
+        assert counts == {}
+
+    async def test_emails_with_attachments(self, store):
+        """Test attachment counts for emails with attachments."""
+        from mailview.models import Attachment
+
+        email1 = Email(
+            id="email-1",
+            attachments=[
+                Attachment(
+                    filename="a.txt", content_type="text/plain", size=1, content=b"a"
+                ),
+                Attachment(
+                    filename="b.txt", content_type="text/plain", size=1, content=b"b"
+                ),
+            ],
+        )
+        email2 = Email(
+            id="email-2",
+            attachments=[
+                Attachment(
+                    filename="c.txt", content_type="text/plain", size=1, content=b"c"
+                ),
+            ],
+        )
+        await store.save(email1)
+        await store.save(email2)
+
+        counts = await store.get_attachment_counts()
+        assert counts == {"email-1": 2, "email-2": 1}

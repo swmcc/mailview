@@ -5,12 +5,32 @@ Provides endpoints for listing, viewing, and managing captured emails.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
 
 from mailview.paths import normalize_mount_path
 from mailview.store import EmailStore
+
+# Path to UI assets
+UI_DIR = Path(__file__).parent / "ui"
+
+# Cache UI HTML at import time to avoid per-request disk I/O
+_UI_HTML_CACHE: str | None = None
+
+
+def _load_ui_html() -> str:
+    """Load and cache the UI HTML."""
+    global _UI_HTML_CACHE
+    if _UI_HTML_CACHE is None:
+        index_path = UI_DIR / "index.html"
+        if index_path.exists():
+            _UI_HTML_CACHE = index_path.read_text(encoding="utf-8")
+        else:
+            _UI_HTML_CACHE = ""
+    return _UI_HTML_CACHE
 
 
 class MailviewRouter:
@@ -38,6 +58,10 @@ class MailviewRouter:
         """Get list of Starlette routes."""
         p = f"{self.mount_path}/api/emails"
         return [
+            # UI route
+            Route(self.mount_path, self.index, methods=["GET"]),
+            Route(f"{self.mount_path}/", self.index, methods=["GET"]),
+            # API routes
             Route(p, self.list_emails, methods=["GET"]),
             Route(p, self.delete_all_emails, methods=["DELETE"]),
             Route(f"{p}/{{email_id}}", self.get_email, methods=["GET"]),
@@ -50,17 +74,27 @@ class MailviewRouter:
             ),
         ]
 
+    async def index(self, request: Request) -> HTMLResponse:
+        """Serve the inbox UI."""
+        html = _load_ui_html()
+        if not html:
+            return HTMLResponse("<h1>UI not found</h1>", status_code=404)
+        return HTMLResponse(html)
+
     async def list_emails(self, request: Request) -> JSONResponse:
         """List all captured emails.
 
         Returns JSON array of email summaries (without bodies or attachments).
         """
         emails = await self.store.get_all()
+        attachment_counts = await self.store.get_attachment_counts()
         summaries = []
         for email in emails:
             data = email.to_dict(include_bodies=False)
             # get_all() doesn't populate attachments; remove misleading empty list
             data.pop("attachments", None)
+            # Add attachment count for UI display
+            data["attachment_count"] = attachment_counts.get(email.id, 0)
             summaries.append(data)
         return JSONResponse({"emails": summaries})
 

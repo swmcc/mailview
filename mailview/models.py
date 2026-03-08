@@ -101,16 +101,45 @@ class Email:
         elif created_at is None:
             created_at = datetime.now(UTC)
 
+        # Normalize recipient fields: always lists; accept a single string.
+        def _normalize_recipients(value: Any) -> list[str]:
+            if value is None:
+                return []
+            if isinstance(value, str):
+                return [value]
+            if isinstance(value, list):
+                return value
+            try:
+                return list(value)
+            except TypeError:
+                return []
+
+        to = _normalize_recipients(data.get("to"))
+        cc = _normalize_recipients(data.get("cc"))
+        bcc = _normalize_recipients(data.get("bcc"))
+
+        # Normalize headers: always a dict.
+        raw_headers = data.get("headers")
+        if raw_headers is None:
+            headers: dict[str, str] = {}
+        elif isinstance(raw_headers, dict):
+            headers = raw_headers
+        else:
+            try:
+                headers = dict(raw_headers)
+            except (TypeError, ValueError):
+                headers = {}
+
         return cls(
             id=data.get("id", str(uuid.uuid4())),
             sender=data.get("sender", ""),
-            to=data.get("to", []),
-            cc=data.get("cc", []),
-            bcc=data.get("bcc", []),
+            to=to,
+            cc=cc,
+            bcc=bcc,
             subject=data.get("subject", ""),
             html_body=data.get("html_body"),
             text_body=data.get("text_body"),
-            headers=data.get("headers", {}),
+            headers=headers,
             attachments=[],  # Attachments loaded separately
             created_at=created_at,
         )

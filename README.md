@@ -80,6 +80,17 @@ Navigate to `/_mail` to see:
 
 Clear all emails with the delete button or `DELETE /_mail/api/emails`.
 
+### Screenshots
+
+**Inbox List**
+![Inbox List](docs/screenshots/inbox-list.png)
+
+**Email Detail View**
+![Email Detail](docs/screenshots/email-detail.png)
+
+**Email Headers**
+![Email Headers](docs/screenshots/email-headers.png)
+
 ## Configuration
 
 Mailview works with zero configuration, but you can customise if needed:

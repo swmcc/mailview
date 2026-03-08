@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mailview"
+version = "0.1.0"
+description = "Zero-config email interceptor for Python ASGI apps"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Stephen McCullough", email = "me@swm.cc" }
+]
+keywords = ["email", "development", "fastapi", "starlette", "asgi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Communications :: Email",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "aiosqlite>=0.19.0",
+    "starlette>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+    "httpx>=0.24",
+    "ruff>=0.1",
+    "bandit>=1.7",
+]
+
+[project.urls]
+Homepage = "https://github.com/swmcc/mailview"
+Repository = "https://github.com/swmcc/mailview"
+Issues = "https://github.com/swmcc/mailview/issues"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["mailview"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]

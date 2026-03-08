@@ -2,5 +2,6 @@
 
 __version__ = "0.1.0"
 
-# Will export MailviewMiddleware once implemented
-__all__ = ["__version__"]
+from mailview.models import Attachment, Email
+
+__all__ = ["__version__", "Email", "Attachment"]

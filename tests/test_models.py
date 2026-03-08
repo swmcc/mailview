@@ -318,3 +318,32 @@ class TestEmailSerialization:
         assert email.attachments[0].filename == "a.txt"
         assert email.attachments[1].filename == "b.png"
         assert email.attachments[1].size == 200
+
+
+class TestEdgeCases:
+    """Tests for edge cases and robustness."""
+
+    def test_from_dict_datetime_with_z_suffix(self):
+        """Test parsing ISO datetime with Z suffix (common in JavaScript)."""
+        data = {"created_at": "2026-01-15T10:30:00Z"}
+        email = Email.from_dict(data)
+        assert email.created_at.year == 2026
+        assert email.created_at.month == 1
+        assert email.created_at.day == 15
+        assert email.created_at.tzinfo is not None
+
+    def test_from_dict_datetime_naive_gets_utc(self):
+        """Test that naive datetime strings get UTC timezone."""
+        data = {"created_at": "2026-01-15T10:30:00"}
+        email = Email.from_dict(data)
+        assert email.created_at.tzinfo is not None
+
+    def test_attachment_default_content(self):
+        """Test Attachment can be created without explicit content."""
+        attachment = Attachment(
+            filename="metadata-only.pdf",
+            content_type="application/pdf",
+            size=1024,
+        )
+        assert attachment.content == b""
+        assert attachment.filename == "metadata-only.pdf"

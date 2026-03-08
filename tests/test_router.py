@@ -105,6 +105,16 @@ class TestListEmails:
         assert data["emails"][0]["has_html"] is True
         assert data["emails"][0]["has_text"] is True
 
+    async def test_list_includes_attachment_count(
+        self, client, store, email_with_attachment
+    ):
+        """Test that listing includes attachment count."""
+        await store.save(email_with_attachment)
+
+        response = client.get("/_mail/api/emails")
+        data = response.json()
+        assert data["emails"][0]["attachment_count"] == 1
+
 
 class TestGetEmail:
     """Tests for GET /emails/{id} endpoint."""

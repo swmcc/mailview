@@ -550,6 +550,9 @@
             <span class="badge" id="emailCount">0</span>
         </div>
         <div class="header-actions">
+            <button class="btn" id="autoRefreshBtn" onclick="toggleAutoRefresh()" title="Auto-refresh enabled (click to disable)">
+                ⏸️ Auto
+            </button>
             <button class="btn" onclick="refreshEmails()" title="Refresh">
                 🔄 Refresh
             </button>
@@ -610,14 +613,33 @@
         let emails = [];
         let selectedEmail = null;
         let currentTab = 'html';
-        const API_BASE = window.location.pathname.replace(/\/$/, '').replace(/\/[^/]*$/, '') || '/_mail';
+        let autoRefreshEnabled = true;
+        let autoRefreshInterval = null;
+
+        // Derive API base: use current path without trailing slash
+        // This correctly handles mount paths like /_mail or /admin/_mail
+        const API_BASE = window.location.pathname.replace(/\/$/, '') || '/_mail';
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             refreshEmails();
-            // Auto-refresh every 30 seconds
-            setInterval(refreshEmails, 30000);
+            startAutoRefresh();
         });
+
+        function startAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            if (autoRefreshEnabled) {
+                autoRefreshInterval = setInterval(refreshEmails, 30000);
+            }
+        }
+
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const btn = document.getElementById('autoRefreshBtn');
+            btn.textContent = autoRefreshEnabled ? '⏸️ Auto' : '▶️ Auto';
+            btn.title = autoRefreshEnabled ? 'Auto-refresh enabled (click to disable)' : 'Auto-refresh disabled (click to enable)';
+            startAutoRefresh();
+        }
 
         // Fetch emails
         async function refreshEmails() {
@@ -665,7 +687,7 @@
                         <div class="email-recipients">To: ${escapeHtml(formatRecipients(email.to))}</div>
                     </div>
                     <div class="email-meta">
-                        <span class="email-time">${formatTime(email.timestamp)}</span>
+                        <span class="email-time">${formatTime(email.created_at)}</span>
                         <button class="btn btn-sm btn-danger email-delete"
                                 onclick="event.stopPropagation(); deleteEmail('${email.id}')">
                             Delete
@@ -698,7 +720,7 @@
             document.getElementById('detailSubject').textContent = selectedEmail.subject || '(No subject)';
             document.getElementById('detailFrom').textContent = selectedEmail.sender || 'Unknown';
             document.getElementById('detailTo').textContent = formatRecipients(selectedEmail.to);
-            document.getElementById('detailDate').textContent = formatDateTime(selectedEmail.timestamp);
+            document.getElementById('detailDate').textContent = formatDateTime(selectedEmail.created_at);
 
             // Handle CC
             const ccRow = document.getElementById('detailCcRow');
@@ -757,7 +779,8 @@
             switch (currentTab) {
                 case 'html':
                     body.className = 'detail-body html-view';
-                    body.innerHTML = `<iframe src="${API_BASE}/api/emails/${selectedEmail.id}/html"></iframe>`;
+                    // Sandbox iframe to prevent script execution and isolate email content
+                    body.innerHTML = `<iframe src="${API_BASE}/api/emails/${selectedEmail.id}/html" sandbox="allow-same-origin" referrerpolicy="no-referrer"></iframe>`;
                     break;
                 case 'text':
                     body.className = 'detail-body';
@@ -774,27 +797,44 @@
             }
         }
 
-        // Render attachments
+        // Render attachments using DOM APIs to prevent XSS via malicious filenames
         function renderAttachments() {
             if (!selectedEmail.attachments || selectedEmail.attachments.length === 0) {
                 return '<p>No attachments</p>';
             }
 
-            return `
-                <div class="attachments-list">
-                    ${selectedEmail.attachments.map(att => `
-                        <a class="attachment-item"
-                           href="${API_BASE}/api/emails/${selectedEmail.id}/attachments/${encodeURIComponent(att.filename)}"
-                           download="${escapeHtml(att.filename)}">
-                            <span class="attachment-icon">📄</span>
-                            <div class="attachment-info">
-                                <div class="attachment-name">${escapeHtml(att.filename)}</div>
-                                <div class="attachment-size">${formatSize(att.size)} · ${escapeHtml(att.content_type)}</div>
-                            </div>
-                        </a>
-                    `).join('')}
-                </div>
-            `;
+            const container = document.createElement('div');
+            container.className = 'attachments-list';
+
+            selectedEmail.attachments.forEach(att => {
+                const link = document.createElement('a');
+                link.className = 'attachment-item';
+                link.href = `${API_BASE}/api/emails/${selectedEmail.id}/attachments/${encodeURIComponent(att.filename)}`;
+                link.download = att.filename;  // Set via DOM property, not attribute string
+
+                const icon = document.createElement('span');
+                icon.className = 'attachment-icon';
+                icon.textContent = '📄';
+
+                const info = document.createElement('div');
+                info.className = 'attachment-info';
+
+                const name = document.createElement('div');
+                name.className = 'attachment-name';
+                name.textContent = att.filename;
+
+                const size = document.createElement('div');
+                size.className = 'attachment-size';
+                size.textContent = `${formatSize(att.size)} · ${att.content_type}`;
+
+                info.appendChild(name);
+                info.appendChild(size);
+                link.appendChild(icon);
+                link.appendChild(info);
+                container.appendChild(link);
+            });
+
+            return container.outerHTML;
         }
 
         // Format headers
@@ -813,7 +853,7 @@
             if (email.reply_to) {
                 headers.push(`Reply-To: ${email.reply_to}`);
             }
-            headers.push(`Date: ${formatDateTime(email.timestamp)}`);
+            headers.push(`Date: ${formatDateTime(email.created_at)}`);
             headers.push(`Message-ID: ${email.id}`);
             return headers.join('\n');
         }

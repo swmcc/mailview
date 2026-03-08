@@ -17,6 +17,21 @@ from mailview.store import EmailStore
 # Path to UI assets
 UI_DIR = Path(__file__).parent / "ui"
 
+# Cache UI HTML at import time to avoid per-request disk I/O
+_UI_HTML_CACHE: str | None = None
+
+
+def _load_ui_html() -> str:
+    """Load and cache the UI HTML."""
+    global _UI_HTML_CACHE
+    if _UI_HTML_CACHE is None:
+        index_path = UI_DIR / "index.html"
+        if index_path.exists():
+            _UI_HTML_CACHE = index_path.read_text(encoding="utf-8")
+        else:
+            _UI_HTML_CACHE = ""
+    return _UI_HTML_CACHE
+
 
 class MailviewRouter:
     """Router for mailview API endpoints.
@@ -61,10 +76,10 @@ class MailviewRouter:
 
     async def index(self, request: Request) -> HTMLResponse:
         """Serve the inbox UI."""
-        index_path = UI_DIR / "index.html"
-        if not index_path.exists():
+        html = _load_ui_html()
+        if not html:
             return HTMLResponse("<h1>UI not found</h1>", status_code=404)
-        return HTMLResponse(index_path.read_text())
+        return HTMLResponse(html)
 
     async def list_emails(self, request: Request) -> JSONResponse:
         """List all captured emails.
@@ -72,11 +87,14 @@ class MailviewRouter:
         Returns JSON array of email summaries (without bodies or attachments).
         """
         emails = await self.store.get_all()
+        attachment_counts = await self.store.get_attachment_counts()
         summaries = []
         for email in emails:
             data = email.to_dict(include_bodies=False)
             # get_all() doesn't populate attachments; remove misleading empty list
             data.pop("attachments", None)
+            # Add attachment count for UI display
+            data["attachment_count"] = attachment_counts.get(email.id, 0)
             summaries.append(data)
         return JSONResponse({"emails": summaries})
 

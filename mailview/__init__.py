@@ -1,6 +1,7 @@
 """Mailview - Zero-config email interceptor for Python ASGI apps."""
 
 from mailview.backend import MailviewBackend, capture_email
+from mailview.middleware import MailviewMiddleware
 from mailview.models import Attachment, Email
 from mailview.router import MailviewRouter, create_routes
 from mailview.store import EmailStore
@@ -13,6 +14,7 @@ __all__ = [
     "Attachment",
     "EmailStore",
     "MailviewBackend",
+    "MailviewMiddleware",
     "MailviewRouter",
     "capture_email",
     "create_routes",

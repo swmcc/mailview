@@ -15,21 +15,37 @@ from mailview.store import EmailStore
 class MailviewRouter:
     """Router for mailview API endpoints.
 
-    All routes are prefixed with /_mail/api.
+    Routes are prefixed with {mount_path}/api/emails.
     """
 
-    def __init__(self, store: EmailStore | None = None) -> None:
+    def __init__(
+        self,
+        store: EmailStore | None = None,
+        mount_path: str = "/_mail",
+    ) -> None:
         """Initialize router with optional store.
 
         Args:
             store: EmailStore instance. Creates default if not provided.
+            mount_path: URL path prefix for routes (default: /_mail)
         """
         self.store = store or EmailStore()
+        self.mount_path = self._normalize_mount_path(mount_path)
+
+    @staticmethod
+    def _normalize_mount_path(mount_path: str) -> str:
+        """Normalize and validate mount_path."""
+        path = mount_path.strip().rstrip("/")
+        if not path or path == "/":
+            raise ValueError("mount_path must be a non-empty, non-root path")
+        if not path.startswith("/"):
+            path = "/" + path
+        return path
 
     @property
     def routes(self) -> list[Route]:
         """Get list of Starlette routes."""
-        p = "/_mail/api/emails"
+        p = f"{self.mount_path}/api/emails"
         return [
             Route(p, self.list_emails, methods=["GET"]),
             Route(p, self.delete_all_emails, methods=["DELETE"]),
@@ -132,16 +148,20 @@ class MailviewRouter:
         return JSONResponse({"deleted": count})
 
 
-def create_routes(store: EmailStore | None = None) -> list[Route]:
+def create_routes(
+    store: EmailStore | None = None,
+    mount_path: str = "/_mail",
+) -> list[Route]:
     """Create mailview API routes.
 
     Convenience function for getting routes without instantiating router.
 
     Args:
         store: Optional EmailStore instance
+        mount_path: URL path prefix for routes (default: /_mail)
 
     Returns:
         List of Starlette Route objects
     """
-    router = MailviewRouter(store=store)
+    router = MailviewRouter(store=store, mount_path=mount_path)
     return router.routes

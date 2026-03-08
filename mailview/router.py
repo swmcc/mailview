@@ -5,12 +5,17 @@ Provides endpoints for listing, viewing, and managing captured emails.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
 
 from mailview.paths import normalize_mount_path
 from mailview.store import EmailStore
+
+# Path to UI assets
+UI_DIR = Path(__file__).parent / "ui"
 
 
 class MailviewRouter:
@@ -38,6 +43,10 @@ class MailviewRouter:
         """Get list of Starlette routes."""
         p = f"{self.mount_path}/api/emails"
         return [
+            # UI route
+            Route(self.mount_path, self.index, methods=["GET"]),
+            Route(f"{self.mount_path}/", self.index, methods=["GET"]),
+            # API routes
             Route(p, self.list_emails, methods=["GET"]),
             Route(p, self.delete_all_emails, methods=["DELETE"]),
             Route(f"{p}/{{email_id}}", self.get_email, methods=["GET"]),
@@ -49,6 +58,13 @@ class MailviewRouter:
                 methods=["GET"],
             ),
         ]
+
+    async def index(self, request: Request) -> HTMLResponse:
+        """Serve the inbox UI."""
+        index_path = UI_DIR / "index.html"
+        if not index_path.exists():
+            return HTMLResponse("<h1>UI not found</h1>", status_code=404)
+        return HTMLResponse(index_path.read_text())
 
     async def list_emails(self, request: Request) -> JSONResponse:
         """List all captured emails.

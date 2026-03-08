@@ -234,12 +234,12 @@ class TestCreateRoutes:
     def test_creates_routes(self):
         """Test that create_routes returns route list."""
         routes = create_routes()
-        assert len(routes) == 6
+        assert len(routes) == 8
 
     def test_creates_routes_with_store(self, store):
         """Test that create_routes accepts store."""
         routes = create_routes(store=store)
-        assert len(routes) == 6
+        assert len(routes) == 8
 
 
 class TestMailviewRouterInit:
@@ -254,3 +254,30 @@ class TestMailviewRouterInit:
         """Test that router uses provided store."""
         router = MailviewRouter(store=store)
         assert router.store is store
+
+
+class TestIndexUI:
+    """Tests for UI index endpoint."""
+
+    def test_index_returns_html(self, client):
+        """Test that index route returns HTML."""
+        response = client.get("/_mail")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        assert "Mailview" in response.text
+
+    def test_index_with_trailing_slash(self, client):
+        """Test that index with trailing slash works."""
+        response = client.get("/_mail/")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+
+    def test_index_contains_required_elements(self, client):
+        """Test that index contains required UI elements."""
+        response = client.get("/_mail")
+        html = response.text
+        # Check for key UI elements
+        assert "email-list" in html
+        assert "refreshEmails" in html
+        assert "deleteEmail" in html
+        assert "/api/emails" in html

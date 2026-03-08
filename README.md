@@ -13,6 +13,15 @@
   Inspired by Ruby's <a href="https://github.com/ryanb/letter_opener">letter_opener</a>.
 </p>
 
+<p align="center">
+  <a href="https://github.com/swmcc/mailview/actions/workflows/ci.yml"><img src="https://github.com/swmcc/mailview/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/swmcc/mailview/actions/workflows/codeql.yml"><img src="https://github.com/swmcc/mailview/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
+  <a href="https://pypi.org/project/mailview/"><img src="https://img.shields.io/pypi/v/mailview" alt="PyPI"></a>
+  <a href="https://pypi.org/project/mailview/"><img src="https://img.shields.io/pypi/pyversions/mailview" alt="Python"></a>
+  <a href="https://codecov.io/gh/swmcc/mailview"><img src="https://codecov.io/gh/swmcc/mailview/branch/main/graph/badge.svg" alt="Coverage"></a>
+  <a href="https://github.com/swmcc/mailview/blob/main/LICENSE"><img src="https://img.shields.io/github/license/swmcc/mailview" alt="License"></a>
+</p>
+
 ## Installation
 
 ```bash

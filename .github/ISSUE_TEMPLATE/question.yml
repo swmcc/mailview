@@ -1,0 +1,26 @@
+name: ❓ Question
+description: Ask a question about mailview
+labels: ["❓ question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question? We're happy to help!
+
+        Before asking, please check:
+        - [README](https://github.com/swmcc/mailview#readme)
+        - [Existing issues](https://github.com/swmcc/mailview/issues)
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Any relevant context, code snippets, or what you've tried.

@@ -128,13 +128,13 @@ The UI is powered by a simple JSON API:
 ## Development
 
 ```bash
-git clone https://github.com/yourusername/mailview
+git clone https://github.com/swmcc/mailview.git
 cd mailview
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-pytest
+make local.install
+make local.check
 ```
+
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for full development workflow.
 
 ## License
 

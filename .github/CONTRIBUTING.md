@@ -1,21 +1,48 @@
-# Contributing to Mailview
+<p align="center">
+  <img src="contributing.svg" alt="Contributing to Mailview" width="800">
+</p>
 
-Thanks for your interest in contributing! This document outlines how to get started.
+This document outlines how to get started.
 
 ## Development Setup
+
+Requires [uv](https://docs.astral.sh/uv/) (fast Python package manager).
 
 ```bash
 git clone https://github.com/swmcc/mailview.git
 cd mailview
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+make local.install
 ```
 
-## Running Tests
+That's it. The venv is created and deps are installed automatically.
+
+## Make Targets
+
+All local development commands are prefixed with `local.`:
+
+| Command | Description |
+|---------|-------------|
+| `make local.install` | Create venv and install dev dependencies |
+| `make local.check` | Run all checks (lint + security + tests) |
+| `make local.test` | Run tests only |
+| `make local.test.cov` | Run tests with coverage report |
+| `make local.lint` | Run ruff linter |
+| `make local.security` | Run bandit security scan |
+| `make help` | Show all available targets |
+
+All targets auto-install dependencies if the venv doesn't exist.
+
+## Workflow
 
 ```bash
-pytest
+# First time setup
+make local.install
+
+# Before committing
+make local.check
+
+# Quick test run
+make local.test
 ```
 
 ## Code Style
@@ -25,11 +52,7 @@ We use:
 - **Type hints** throughout
 - **Docstrings** for public APIs
 
-Run before committing:
-```bash
-ruff check .
-ruff format .
-```
+The linter runs automatically with `make local.check`.
 
 ## Commit Messages
 
@@ -48,10 +71,11 @@ Example: `🐛 Fix email parsing for multipart messages`
 
 1. Fork the repo and create your branch from `main`
 2. Make your changes
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Update documentation if needed
-6. Submit a PR with a clear description
+3. Run `make local.check` and ensure it passes
+4. Update documentation if needed
+5. Submit a PR with a clear description
+
+CI will run the same checks on Python 3.11, 3.12, and 3.13.
 
 ## Reporting Bugs
 

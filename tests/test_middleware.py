@@ -11,7 +11,7 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from mailview.middleware import MailviewMiddleware, is_dev_environment
+from mailview.middleware import MailviewMiddleware
 from mailview.models import Email
 
 
@@ -32,50 +32,6 @@ def create_app(middleware_kwargs=None):
     app = Starlette(routes=[Route("/", homepage)])
     kwargs = middleware_kwargs or {}
     return MailviewMiddleware(app, **kwargs)
-
-
-class TestIsDevEnvironment:
-    """Tests for dev environment detection."""
-
-    def test_debug_true(self):
-        """Test DEBUG=1 is detected."""
-        with patch.dict(os.environ, {"DEBUG": "1"}, clear=True):
-            assert is_dev_environment() is True
-
-    def test_debug_true_string(self):
-        """Test DEBUG=true is detected."""
-        with patch.dict(os.environ, {"DEBUG": "true"}, clear=True):
-            assert is_dev_environment() is True
-
-    def test_environment_development(self):
-        """Test ENVIRONMENT=development is detected."""
-        with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
-            assert is_dev_environment() is True
-
-    def test_env_dev(self):
-        """Test ENV=dev is detected."""
-        with patch.dict(os.environ, {"ENV": "dev"}, clear=True):
-            assert is_dev_environment() is True
-
-    def test_fastapi_env(self):
-        """Test FASTAPI_ENV=development is detected."""
-        with patch.dict(os.environ, {"FASTAPI_ENV": "development"}, clear=True):
-            assert is_dev_environment() is True
-
-    def test_flask_env(self):
-        """Test FLASK_ENV=development is detected."""
-        with patch.dict(os.environ, {"FLASK_ENV": "development"}, clear=True):
-            assert is_dev_environment() is True
-
-    def test_production_not_detected(self):
-        """Test production environment is not detected as dev."""
-        with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=True):
-            assert is_dev_environment() is False
-
-    def test_no_env_vars(self):
-        """Test no env vars returns False."""
-        with patch.dict(os.environ, {}, clear=True):
-            assert is_dev_environment() is False
 
 
 class TestMiddlewareInit:

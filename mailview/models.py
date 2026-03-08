@@ -16,7 +16,7 @@ class Attachment:
     filename: str
     content_type: str
     size: int
-    content: bytes = field(repr=False)
+    content: bytes = field(default=b"", repr=False)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize attachment to dict (without content for listings)."""
@@ -110,7 +110,13 @@ class Email:
         # Parse created_at if string
         created_at = data.get("created_at")
         if isinstance(created_at, str):
+            # Handle 'Z' suffix (common in JavaScript/JSON)
+            if created_at.endswith("Z"):
+                created_at = created_at[:-1] + "+00:00"
             created_at = datetime.fromisoformat(created_at)
+            # Ensure timezone-aware (default to UTC if naive)
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
         elif created_at is None:
             created_at = datetime.now(UTC)
 
@@ -153,7 +159,9 @@ class Email:
             html_body=data.get("html_body"),
             text_body=data.get("text_body"),
             headers=headers,
-            attachments=[Attachment.from_dict(a) for a in data.get("attachments", [])],
+            attachments=[
+                Attachment.from_dict(a) for a in (data.get("attachments") or [])
+            ],
             created_at=created_at,
         )
 

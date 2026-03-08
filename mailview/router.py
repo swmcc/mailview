@@ -9,6 +9,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
+from mailview.paths import normalize_mount_path
 from mailview.store import EmailStore
 
 
@@ -30,17 +31,7 @@ class MailviewRouter:
             mount_path: URL path prefix for routes (default: /_mail)
         """
         self.store = store or EmailStore()
-        self.mount_path = self._normalize_mount_path(mount_path)
-
-    @staticmethod
-    def _normalize_mount_path(mount_path: str) -> str:
-        """Normalize and validate mount_path."""
-        path = mount_path.strip().rstrip("/")
-        if not path or path == "/":
-            raise ValueError("mount_path must be a non-empty, non-root path")
-        if not path.startswith("/"):
-            path = "/" + path
-        return path
+        self.mount_path = normalize_mount_path(mount_path)
 
     @property
     def routes(self) -> list[Route]:

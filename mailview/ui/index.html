@@ -833,21 +833,18 @@
         // Render tab content
         function renderTabContent() {
             const body = document.getElementById('detailBody');
-            let copyContent = '';
 
             switch (currentTab) {
                 case 'html':
                     body.className = 'detail-body html-view';
                     // Sandbox iframe to prevent script execution and isolate email content
                     body.innerHTML = `<iframe src="${API_BASE}/api/emails/${selectedEmail.id}/html" sandbox="allow-same-origin" referrerpolicy="no-referrer"></iframe>`;
-                    copyContent = selectedEmail.html_body || '';
                     break;
                 case 'text':
                     body.className = 'detail-body';
-                    copyContent = selectedEmail.text_body || 'No text content';
                     body.innerHTML = `
                         <button class="copy-btn" onclick="copyToClipboard(this, 'text')">📋 Copy</button>
-                        <pre>${escapeHtml(copyContent)}</pre>
+                        <pre>${escapeHtml(selectedEmail.text_body || 'No text content')}</pre>
                     `;
                     break;
                 case 'attachments':
@@ -856,10 +853,9 @@
                     break;
                 case 'source':
                     body.className = 'detail-body';
-                    copyContent = formatSource(selectedEmail);
                     body.innerHTML = `
                         <button class="copy-btn" onclick="copyToClipboard(this, 'source')">📋 Copy</button>
-                        <pre>${escapeHtml(copyContent)}</pre>
+                        <pre>${escapeHtml(formatSource(selectedEmail))}</pre>
                     `;
                     break;
                 case 'headers':
@@ -912,11 +908,23 @@
             return container.outerHTML;
         }
 
+        // Get header value case-insensitively
+        function getHeader(email, name) {
+            if (!email.headers || typeof email.headers !== 'object') return null;
+            const lowerName = name.toLowerCase();
+            const key = Object.keys(email.headers).find(k => k.toLowerCase() === lowerName);
+            return key ? email.headers[key] : null;
+        }
+
         // Format raw source (headers + body)
         function formatSource(email) {
+            const messageId = getHeader(email, 'message-id') || email.id;
+            const date = getHeader(email, 'date') || email.created_at;
+            const replyTo = getHeader(email, 'reply-to');
+
             const lines = [
-                `Message-ID: ${email.id}`,
-                `Date: ${email.created_at}`,
+                `Message-ID: ${messageId}`,
+                `Date: ${date}`,
                 `From: ${email.sender || ''}`,
                 `To: ${formatRecipients(email.to)}`,
             ];
@@ -926,15 +934,22 @@
             if (email.bcc && email.bcc.length) {
                 lines.push(`Bcc: ${formatRecipients(email.bcc)}`);
             }
-            if (email.reply_to) {
-                lines.push(`Reply-To: ${email.reply_to}`);
+            if (replyTo) {
+                lines.push(`Reply-To: ${replyTo}`);
             }
             lines.push(`Subject: ${email.subject || ''}`);
-            if (email.html_body) {
+
+            // Determine content type based on what's actually present
+            const hasHtml = email.has_html || email.html_body;
+            const hasText = email.has_text || email.text_body;
+            if (hasHtml && hasText) {
                 lines.push(`Content-Type: multipart/alternative`);
-            } else if (email.text_body) {
+            } else if (hasHtml) {
+                lines.push(`Content-Type: text/html; charset=utf-8`);
+            } else if (hasText) {
                 lines.push(`Content-Type: text/plain; charset=utf-8`);
             }
+
             lines.push('');
             if (email.text_body) {
                 lines.push(email.text_body);
@@ -949,20 +964,28 @@
 
         // Render headers as a table
         function renderHeadersTable(email) {
-            const rows = [
-                { label: 'Message ID', value: email.id },
-                { label: 'Date', value: formatDateTime(email.created_at) },
-                { label: 'From', value: email.sender || '(none)' },
-                { label: 'To', value: formatRecipients(email.to) || '(none)' },
-            ];
+            const messageId = getHeader(email, 'message-id');
+            const replyTo = getHeader(email, 'reply-to');
+
+            const rows = [];
+
+            // Show actual Message-ID if available, otherwise internal ID
+            if (messageId) {
+                rows.push({ label: 'Message-ID', value: messageId });
+            }
+            rows.push({ label: 'Mailview ID', value: email.id });
+            rows.push({ label: 'Date', value: formatDateTime(email.created_at) });
+            rows.push({ label: 'From', value: email.sender || '(none)' });
+            rows.push({ label: 'To', value: formatRecipients(email.to) || '(none)' });
+
             if (email.cc && email.cc.length) {
                 rows.push({ label: 'Cc', value: formatRecipients(email.cc) });
             }
             if (email.bcc && email.bcc.length) {
                 rows.push({ label: 'Bcc', value: formatRecipients(email.bcc) });
             }
-            if (email.reply_to) {
-                rows.push({ label: 'Reply-To', value: email.reply_to });
+            if (replyTo) {
+                rows.push({ label: 'Reply-To', value: replyTo });
             }
             rows.push({ label: 'Subject', value: email.subject || '(none)' });
             rows.push({ label: 'Has HTML', value: email.has_html ? 'Yes' : 'No' });
@@ -1018,20 +1041,26 @@
 
         // Format headers as plain text for copying
         function formatHeadersText(email) {
-            const lines = [
-                `Message ID: ${email.id}`,
-                `Date: ${formatDateTime(email.created_at)}`,
-                `From: ${email.sender || '(none)'}`,
-                `To: ${formatRecipients(email.to) || '(none)'}`,
-            ];
+            const messageId = getHeader(email, 'message-id');
+            const replyTo = getHeader(email, 'reply-to');
+
+            const lines = [];
+            if (messageId) {
+                lines.push(`Message-ID: ${messageId}`);
+            }
+            lines.push(`Mailview ID: ${email.id}`);
+            lines.push(`Date: ${formatDateTime(email.created_at)}`);
+            lines.push(`From: ${email.sender || '(none)'}`);
+            lines.push(`To: ${formatRecipients(email.to) || '(none)'}`);
+
             if (email.cc && email.cc.length) {
                 lines.push(`Cc: ${formatRecipients(email.cc)}`);
             }
             if (email.bcc && email.bcc.length) {
                 lines.push(`Bcc: ${formatRecipients(email.bcc)}`);
             }
-            if (email.reply_to) {
-                lines.push(`Reply-To: ${email.reply_to}`);
+            if (replyTo) {
+                lines.push(`Reply-To: ${replyTo}`);
             }
             lines.push(`Subject: ${email.subject || '(none)'}`);
             lines.push(`Has HTML: ${email.has_html ? 'Yes' : 'No'}`);

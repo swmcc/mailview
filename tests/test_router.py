@@ -296,10 +296,10 @@ class TestIndexUI:
         """Test that index contains detail view with tabs and copy buttons."""
         response = client.get("/_mail")
         html = response.text
-        # Check for detail view tabs
+        # Check for detail view tabs (use visible labels, not JS tokens)
         assert "switchTab" in html
-        assert "'source'" in html
-        assert "'headers'" in html
+        assert "Source" in html
+        assert "Headers" in html
         # Check for copy functionality
         assert "copyToClipboard" in html
         assert "copy-btn" in html

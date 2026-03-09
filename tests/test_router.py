@@ -291,3 +291,17 @@ class TestIndexUI:
         assert "refreshEmails" in html
         assert "deleteEmail" in html
         assert "/api/emails" in html
+
+    def test_index_contains_detail_view_elements(self, client):
+        """Test that index contains detail view with tabs and copy buttons."""
+        response = client.get("/_mail")
+        html = response.text
+        # Check for detail view tabs
+        assert "switchTab" in html
+        assert "'source'" in html
+        assert "'headers'" in html
+        # Check for copy functionality
+        assert "copyToClipboard" in html
+        assert "copy-btn" in html
+        # Check for headers table
+        assert "headers-table" in html

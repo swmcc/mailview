@@ -439,6 +439,63 @@
             color: var(--text-muted);
         }
 
+        /* Headers table */
+        .headers-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .headers-table th,
+        .headers-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .headers-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+            width: 120px;
+            vertical-align: top;
+        }
+
+        .headers-table td {
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        /* Copy button */
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 6px 12px;
+            font-size: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            z-index: 10;
+        }
+
+        .copy-btn:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .copy-btn.copied {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+            color: white;
+        }
+
+        .detail-body {
+            position: relative;
+        }
+
         /* Overlay */
         .overlay {
             position: fixed;
@@ -750,6 +807,7 @@
             if (selectedEmail.attachments && selectedEmail.attachments.length > 0) {
                 availableTabs.push({ id: 'attachments', label: `Attachments (${selectedEmail.attachments.length})` });
             }
+            availableTabs.push({ id: 'source', label: 'Source' });
             availableTabs.push({ id: 'headers', label: 'Headers' });
 
             // Set default tab
@@ -775,24 +833,41 @@
         // Render tab content
         function renderTabContent() {
             const body = document.getElementById('detailBody');
+            let copyContent = '';
 
             switch (currentTab) {
                 case 'html':
                     body.className = 'detail-body html-view';
                     // Sandbox iframe to prevent script execution and isolate email content
                     body.innerHTML = `<iframe src="${API_BASE}/api/emails/${selectedEmail.id}/html" sandbox="allow-same-origin" referrerpolicy="no-referrer"></iframe>`;
+                    copyContent = selectedEmail.html_body || '';
                     break;
                 case 'text':
                     body.className = 'detail-body';
-                    body.innerHTML = `<pre>${escapeHtml(selectedEmail.text_body || 'No text content')}</pre>`;
+                    copyContent = selectedEmail.text_body || 'No text content';
+                    body.innerHTML = `
+                        <button class="copy-btn" onclick="copyToClipboard(this, 'text')">📋 Copy</button>
+                        <pre>${escapeHtml(copyContent)}</pre>
+                    `;
                     break;
                 case 'attachments':
                     body.className = 'detail-body';
                     body.innerHTML = renderAttachments();
                     break;
+                case 'source':
+                    body.className = 'detail-body';
+                    copyContent = formatSource(selectedEmail);
+                    body.innerHTML = `
+                        <button class="copy-btn" onclick="copyToClipboard(this, 'source')">📋 Copy</button>
+                        <pre>${escapeHtml(copyContent)}</pre>
+                    `;
+                    break;
                 case 'headers':
                     body.className = 'detail-body';
-                    body.innerHTML = `<pre>${escapeHtml(formatHeaders(selectedEmail))}</pre>`;
+                    body.innerHTML = `
+                        <button class="copy-btn" onclick="copyToClipboard(this, 'headers')">📋 Copy</button>
+                        ${renderHeadersTable(selectedEmail)}
+                    `;
                     break;
             }
         }
@@ -837,25 +912,134 @@
             return container.outerHTML;
         }
 
-        // Format headers
-        function formatHeaders(email) {
-            const headers = [
-                `Subject: ${email.subject || ''}`,
+        // Format raw source (headers + body)
+        function formatSource(email) {
+            const lines = [
+                `Message-ID: ${email.id}`,
+                `Date: ${email.created_at}`,
                 `From: ${email.sender || ''}`,
                 `To: ${formatRecipients(email.to)}`,
             ];
             if (email.cc && email.cc.length) {
-                headers.push(`Cc: ${formatRecipients(email.cc)}`);
+                lines.push(`Cc: ${formatRecipients(email.cc)}`);
             }
             if (email.bcc && email.bcc.length) {
-                headers.push(`Bcc: ${formatRecipients(email.bcc)}`);
+                lines.push(`Bcc: ${formatRecipients(email.bcc)}`);
             }
             if (email.reply_to) {
-                headers.push(`Reply-To: ${email.reply_to}`);
+                lines.push(`Reply-To: ${email.reply_to}`);
             }
-            headers.push(`Date: ${formatDateTime(email.created_at)}`);
-            headers.push(`Message-ID: ${email.id}`);
-            return headers.join('\n');
+            lines.push(`Subject: ${email.subject || ''}`);
+            if (email.html_body) {
+                lines.push(`Content-Type: multipart/alternative`);
+            } else if (email.text_body) {
+                lines.push(`Content-Type: text/plain; charset=utf-8`);
+            }
+            lines.push('');
+            if (email.text_body) {
+                lines.push(email.text_body);
+            }
+            if (email.html_body) {
+                lines.push('');
+                lines.push('---------- HTML Body ----------');
+                lines.push(email.html_body);
+            }
+            return lines.join('\n');
+        }
+
+        // Render headers as a table
+        function renderHeadersTable(email) {
+            const rows = [
+                { label: 'Message ID', value: email.id },
+                { label: 'Date', value: formatDateTime(email.created_at) },
+                { label: 'From', value: email.sender || '(none)' },
+                { label: 'To', value: formatRecipients(email.to) || '(none)' },
+            ];
+            if (email.cc && email.cc.length) {
+                rows.push({ label: 'Cc', value: formatRecipients(email.cc) });
+            }
+            if (email.bcc && email.bcc.length) {
+                rows.push({ label: 'Bcc', value: formatRecipients(email.bcc) });
+            }
+            if (email.reply_to) {
+                rows.push({ label: 'Reply-To', value: email.reply_to });
+            }
+            rows.push({ label: 'Subject', value: email.subject || '(none)' });
+            rows.push({ label: 'Has HTML', value: email.has_html ? 'Yes' : 'No' });
+            rows.push({ label: 'Has Text', value: email.has_text ? 'Yes' : 'No' });
+            if (email.attachments && email.attachments.length > 0) {
+                rows.push({
+                    label: 'Attachments',
+                    value: email.attachments.map(a => a.filename).join(', ')
+                });
+            }
+
+            return `
+                <table class="headers-table">
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>
+                                <th>${escapeHtml(row.label)}</th>
+                                <td>${escapeHtml(row.value)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Copy to clipboard
+        async function copyToClipboard(btn, type) {
+            let content = '';
+            switch (type) {
+                case 'text':
+                    content = selectedEmail.text_body || '';
+                    break;
+                case 'source':
+                    content = formatSource(selectedEmail);
+                    break;
+                case 'headers':
+                    content = formatHeadersText(selectedEmail);
+                    break;
+            }
+
+            try {
+                await navigator.clipboard.writeText(content);
+                btn.textContent = '✓ Copied';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = '📋 Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                showToast('Failed to copy to clipboard', 'error');
+            }
+        }
+
+        // Format headers as plain text for copying
+        function formatHeadersText(email) {
+            const lines = [
+                `Message ID: ${email.id}`,
+                `Date: ${formatDateTime(email.created_at)}`,
+                `From: ${email.sender || '(none)'}`,
+                `To: ${formatRecipients(email.to) || '(none)'}`,
+            ];
+            if (email.cc && email.cc.length) {
+                lines.push(`Cc: ${formatRecipients(email.cc)}`);
+            }
+            if (email.bcc && email.bcc.length) {
+                lines.push(`Bcc: ${formatRecipients(email.bcc)}`);
+            }
+            if (email.reply_to) {
+                lines.push(`Reply-To: ${email.reply_to}`);
+            }
+            lines.push(`Subject: ${email.subject || '(none)'}`);
+            lines.push(`Has HTML: ${email.has_html ? 'Yes' : 'No'}`);
+            lines.push(`Has Text: ${email.has_text ? 'Yes' : 'No'}`);
+            if (email.attachments && email.attachments.length > 0) {
+                lines.push(`Attachments: ${email.attachments.map(a => a.filename).join(', ')}`);
+            }
+            return lines.join('\n');
         }
 
         // Open/close detail panel

@@ -82,14 +82,17 @@ Clear all emails with the delete button or `DELETE /_mail/api/emails`.
 
 ### Screenshots
 
-**Inbox List**
-![Inbox List](docs/screenshots/inbox-list.png)
+**Source Tab**
+![Source Tab](docs/screenshots/detail-source-tab.png)
 
-**Email Detail View**
-![Email Detail](docs/screenshots/email-detail.png)
+**Headers Table**
+![Headers Table](docs/screenshots/detail-headers-table.png)
 
-**Email Headers**
-![Email Headers](docs/screenshots/email-headers.png)
+**Text Tab**
+![Text Tab](docs/screenshots/detail-text-tab.png)
+
+**Copy Button**
+![Copy Button](docs/screenshots/detail-copy-button.png)
 
 ## Configuration
 

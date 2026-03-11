@@ -305,3 +305,7 @@ class TestIndexUI:
         assert "copy-btn" in html
         # Check for headers table
         assert "headers-table" in html
+        # Check for attachment functionality
+        assert "attachments-list" in html
+        assert "attachment-preview" in html
+        assert "isImageType" in html

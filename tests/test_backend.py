@@ -350,6 +350,160 @@ class TestEdgeCases:
         assert email.to == ["single@example.com"]
 
 
+class TestPayloadEdgeCases:
+    """Tests for edge cases with email payloads."""
+
+    def test_parse_multipart_with_none_payload(self, backend):
+        """Test parsing multipart where a part has None payload."""
+        from email import message_from_string
+
+        # Create a malformed multipart message with an empty part
+        raw = """\
+From: sender@example.com
+To: recipient@example.com
+Subject: Empty Part
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="boundary123"
+
+--boundary123
+Content-Type: text/plain
+
+Text body
+--boundary123
+Content-Type: text/html
+
+--boundary123--"""
+
+        msg = message_from_string(raw)
+        email = backend.parse_message(msg)
+
+        # Should handle gracefully - text body should be extracted
+        assert "Text body" in (email.text_body or "")
+        # HTML part has empty payload, should not crash
+        assert email.html_body is None or email.html_body == ""
+
+    def test_parse_single_part_with_str_payload(self, backend):
+        """Test single-part message where payload is already a string."""
+        from email.message import Message
+
+        # Create a Message (not EmailMessage) with a string payload
+        msg = Message()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "String Payload"
+        msg["Content-Type"] = "text/plain; charset=utf-8"
+        # Set payload as string without encoding
+        msg.set_payload("This is already a string")
+
+        email = backend.parse_message(msg)
+
+        # Should handle string payload gracefully
+        assert email.text_body == "This is already a string"
+
+    def test_parse_single_part_html_with_str_payload(self, backend):
+        """Test single-part HTML message where payload is already a string."""
+        from email.message import Message
+
+        msg = Message()
+        msg["From"] = "sender@example.com"
+        msg["To"] = "recipient@example.com"
+        msg["Subject"] = "HTML String Payload"
+        msg["Content-Type"] = "text/html; charset=utf-8"
+        msg.set_payload("<p>HTML as string</p>")
+
+        email = backend.parse_message(msg)
+
+        assert email.html_body == "<p>HTML as string</p>"
+        assert email.text_body is None
+
+    def test_parse_single_part_non_bytes_payload(self, backend):
+        """Test single-part message with non-bytes payload via mocking."""
+        from unittest.mock import MagicMock
+
+        # Create a mock message that returns a string from get_payload(decode=True)
+        mock_msg = MagicMock()
+        mock_msg.get.side_effect = lambda key, default="": {
+            "From": "sender@example.com",
+            "To": "recipient@example.com",
+            "Subject": "Mock Message",
+        }.get(key, default)
+        mock_msg.is_multipart.return_value = False
+        mock_msg.get_content_type.return_value = "text/plain"
+        mock_msg.get_payload.return_value = "String payload directly"  # Not bytes
+        mock_msg.get_content_charset.return_value = "utf-8"
+        mock_msg.items.return_value = []
+
+        email = backend.parse_message(mock_msg)
+
+        # Should convert string payload using str()
+        assert email.text_body == "String payload directly"
+
+    def test_parse_multipart_non_bytes_html_payload(self, backend):
+        """Test multipart message where HTML part has non-bytes payload."""
+        from unittest.mock import MagicMock
+
+        # Create mock parts
+        text_part = MagicMock()
+        text_part.is_multipart.return_value = False
+        text_part.get_content_type.return_value = "text/plain"
+        text_part.get_content_disposition.return_value = None
+        text_part.get_payload.return_value = b"Plain text"
+        text_part.get_content_charset.return_value = "utf-8"
+
+        html_part = MagicMock()
+        html_part.is_multipart.return_value = False
+        html_part.get_content_type.return_value = "text/html"
+        html_part.get_content_disposition.return_value = None
+        html_part.get_payload.return_value = "HTML as string"  # Not bytes!
+        html_part.get_content_charset.return_value = "utf-8"
+
+        # Create mock message
+        mock_msg = MagicMock()
+        mock_msg.get.side_effect = lambda key, default="": {
+            "From": "sender@example.com",
+            "To": "recipient@example.com",
+            "Subject": "Mock Multipart",
+        }.get(key, default)
+        mock_msg.is_multipart.return_value = True
+        mock_msg.walk.return_value = [mock_msg, text_part, html_part]
+        mock_msg.items.return_value = []
+
+        email = backend.parse_message(mock_msg)
+
+        # Text part should be decoded from bytes
+        assert email.text_body == "Plain text"
+        # HTML part with string payload should be skipped (isinstance check fails)
+        assert email.html_body is None
+
+    def test_parse_multipart_non_bytes_text_payload(self, backend):
+        """Test multipart message where text part has non-bytes payload."""
+        from unittest.mock import MagicMock
+
+        # Create mock text part with non-bytes payload
+        text_part = MagicMock()
+        text_part.is_multipart.return_value = False
+        text_part.get_content_type.return_value = "text/plain"
+        text_part.get_content_disposition.return_value = None
+        text_part.get_payload.return_value = "String not bytes"  # Not bytes!
+        text_part.get_content_charset.return_value = "utf-8"
+
+        # Create mock message
+        mock_msg = MagicMock()
+        mock_msg.get.side_effect = lambda key, default="": {
+            "From": "sender@example.com",
+            "To": "recipient@example.com",
+            "Subject": "Mock Multipart Text",
+        }.get(key, default)
+        mock_msg.is_multipart.return_value = True
+        mock_msg.walk.return_value = [mock_msg, text_part]
+        mock_msg.items.return_value = []
+
+        email = backend.parse_message(mock_msg)
+
+        # Text part with string payload should be skipped
+        assert email.text_body is None
+
+
 class TestLegacyMessage:
     """Tests for legacy email.message.Message support."""
 

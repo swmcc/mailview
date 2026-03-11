@@ -323,6 +323,51 @@ class TestEmailSerialization:
 class TestEdgeCases:
     """Tests for edge cases and robustness."""
 
+    def test_from_dict_created_at_none(self):
+        """Test from_dict with explicitly None created_at."""
+        data = {"id": "test", "created_at": None}
+        email = Email.from_dict(data)
+        assert email.created_at is not None  # Should default to now
+
+    def test_from_dict_recipients_as_string(self):
+        """Test from_dict normalizes single string recipient to list."""
+        data = {"to": "single@example.com", "cc": "cc@example.com"}
+        email = Email.from_dict(data)
+        assert email.to == ["single@example.com"]
+        assert email.cc == ["cc@example.com"]
+
+    def test_from_dict_recipients_invalid_type(self):
+        """Test from_dict handles non-iterable recipient gracefully."""
+        data = {"to": 12345, "cc": object()}  # Invalid types
+        email = Email.from_dict(data)
+        # Should return empty list for non-iterable types
+        assert email.to == []
+        assert email.cc == []
+
+    def test_from_dict_recipients_as_tuple(self):
+        """Test from_dict handles tuple recipients."""
+        data = {"to": ("a@test.com", "b@test.com")}
+        email = Email.from_dict(data)
+        assert email.to == ["a@test.com", "b@test.com"]
+
+    def test_from_dict_headers_invalid_type(self):
+        """Test from_dict handles invalid headers gracefully."""
+        data = {"headers": "not a dict"}
+        email = Email.from_dict(data)
+        assert email.headers == {}
+
+    def test_from_dict_headers_as_list_of_tuples(self):
+        """Test from_dict converts list of tuples to dict."""
+        data = {"headers": [("X-Key", "value"), ("X-Other", "other")]}
+        email = Email.from_dict(data)
+        assert email.headers == {"X-Key": "value", "X-Other": "other"}
+
+    def test_from_dict_headers_unconvertible(self):
+        """Test from_dict handles unconvertible headers."""
+        data = {"headers": 12345}  # Can't convert int to dict
+        email = Email.from_dict(data)
+        assert email.headers == {}
+
     def test_from_dict_datetime_with_z_suffix(self):
         """Test parsing ISO datetime with Z suffix (common in JavaScript)."""
         data = {"created_at": "2026-01-15T10:30:00Z"}

@@ -888,9 +888,13 @@
             }
         }
 
+        // Max size for image preview (5MB) - larger images just show download link
+        const MAX_PREVIEW_SIZE = 5 * 1024 * 1024;
+
         // Check if content type is a previewable raster image
-        function isImageType(contentType) {
+        function isPreviewableImage(contentType, size) {
             if (!contentType) return false;
+            if (size > MAX_PREVIEW_SIZE) return false;
 
             // Normalize MIME type: strip parameters and lowercase
             const baseType = contentType.split(';', 1)[0].trim().toLowerCase();
@@ -918,11 +922,12 @@
             container.className = 'attachments-list';
 
             selectedEmail.attachments.forEach(att => {
-                const isImage = isImageType(att.content_type);
+                const canPreview = isPreviewableImage(att.content_type, att.size);
+                const isImage = att.content_type?.startsWith('image/');
                 const attachmentUrl = `${API_BASE}/api/emails/${selectedEmail.id}/attachments/${encodeURIComponent(att.filename)}`;
 
                 const link = document.createElement('a');
-                link.className = isImage ? 'attachment-item with-preview' : 'attachment-item';
+                link.className = canPreview ? 'attachment-item with-preview' : 'attachment-item';
                 link.href = attachmentUrl;
                 link.download = att.filename;  // Set via DOM property, not attribute string
 
@@ -951,14 +956,20 @@
                 header.appendChild(info);
                 link.appendChild(header);
 
-                // Add image preview for image attachments
-                if (isImage) {
+                // Add image preview for safe, reasonably-sized images
+                if (canPreview) {
                     const preview = document.createElement('img');
                     preview.className = 'attachment-preview';
                     // Use inline disposition for preview rendering
                     preview.src = `${attachmentUrl}?inline=1`;
                     preview.alt = att.filename;
                     preview.loading = 'lazy';
+                    preview.referrerPolicy = 'no-referrer';
+                    // Handle failed image loads gracefully
+                    preview.onerror = () => {
+                        preview.style.display = 'none';
+                        link.classList.remove('with-preview');
+                    };
                     link.appendChild(preview);
                 }
 

@@ -179,6 +179,16 @@ class TestGetAttachment:
         assert "document.pdf" in response.headers["content-disposition"]
         assert response.content == b"PDF content here"
 
+    async def test_get_attachment_inline(self, client, store, email_with_attachment):
+        """Test inline attachment for previews."""
+        await store.save(email_with_attachment)
+
+        url = "/_mail/api/emails/email-with-attach/attachments/document.pdf?inline=1"
+        response = client.get(url)
+        assert response.status_code == 200
+        assert "inline" in response.headers["content-disposition"]
+        assert "document.pdf" in response.headers["content-disposition"]
+
     async def test_get_attachment_not_found(self, client, store, sample_email):
         """Test downloading non-existent attachment."""
         await store.save(sample_email)
@@ -308,4 +318,4 @@ class TestIndexUI:
         # Check for attachment functionality
         assert "attachments-list" in html
         assert "attachment-preview" in html
-        assert "isImageType" in html
+        assert "with-preview" in html

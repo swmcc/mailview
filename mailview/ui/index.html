@@ -888,9 +888,24 @@
             }
         }
 
-        // Check if content type is an image
+        // Check if content type is a previewable raster image
         function isImageType(contentType) {
-            return contentType && contentType.startsWith('image/');
+            if (!contentType) return false;
+
+            // Normalize MIME type: strip parameters and lowercase
+            const baseType = contentType.split(';', 1)[0].trim().toLowerCase();
+
+            // Allowlist common raster image types; exclude SVG and other vector/complex formats
+            const allowedImageTypes = [
+                'image/jpeg',
+                'image/jpg',
+                'image/png',
+                'image/gif',
+                'image/webp',
+                'image/bmp'
+            ];
+
+            return allowedImageTypes.includes(baseType);
         }
 
         // Render attachments using DOM APIs to prevent XSS via malicious filenames
@@ -940,7 +955,8 @@
                 if (isImage) {
                     const preview = document.createElement('img');
                     preview.className = 'attachment-preview';
-                    preview.src = attachmentUrl;
+                    // Use inline disposition for preview rendering
+                    preview.src = `${attachmentUrl}?inline=1`;
                     preview.alt = att.filename;
                     preview.loading = 'lazy';
                     link.appendChild(preview);

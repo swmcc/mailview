@@ -40,6 +40,7 @@ dev = [
     "httpx>=0.24",
     "ruff>=0.1",
     "bandit>=1.7",
+    "fastapi>=0.100",
 ]
 
 [project.urls]

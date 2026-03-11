@@ -1,4 +1,13 @@
-"""Test app to verify mailview works end-to-end with FastAPI."""
+"""Example FastAPI app demonstrating mailview integration.
+
+Run with: uvicorn examples.fastapi_app:app --port 8765
+
+Endpoints:
+- GET /         - Home page with instructions
+- GET /send     - Send a plain text test email
+- GET /send-html - Send an HTML email with attachment
+- GET /_mail    - View captured emails in the inbox UI
+"""
 
 from email.message import EmailMessage
 

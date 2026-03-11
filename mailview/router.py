@@ -134,6 +134,7 @@ class MailviewRouter:
         """Download an attachment.
 
         Returns attachment content with appropriate content type.
+        Use ?inline=1 query param for inline display (e.g., image previews).
         """
         email_id = request.path_params["email_id"]
         filename = request.path_params["filename"]
@@ -151,10 +152,16 @@ class MailviewRouter:
         safe_filename = (
             attachment.filename.replace("\r", "").replace("\n", "").replace('"', '\\"')
         )
+
+        # Use inline disposition for preview requests, attachment for downloads
+        inline = request.query_params.get("inline") == "1"
+        disposition = "inline" if inline else "attachment"
+
+        content_disposition = f'{disposition}; filename="{safe_filename}"'
         return Response(
             content=attachment.content,
             media_type=attachment.content_type,
-            headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
+            headers={"Content-Disposition": content_disposition},
         )
 
     async def delete_email(self, request: Request) -> JSONResponse:

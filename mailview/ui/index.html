@@ -439,6 +439,26 @@
             color: var(--text-muted);
         }
 
+        .attachment-preview {
+            width: 100%;
+            max-width: 300px;
+            margin-top: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .attachment-item.with-preview {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .attachment-item.with-preview .attachment-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+        }
+
         /* Headers table */
         .headers-table {
             width: 100%;
@@ -868,6 +888,30 @@
             }
         }
 
+        // Max size for image preview (5MB) - larger images just show download link
+        const MAX_PREVIEW_SIZE = 5 * 1024 * 1024;
+
+        // Check if content type is a previewable raster image
+        function isPreviewableImage(contentType, size) {
+            if (!contentType) return false;
+            if (size > MAX_PREVIEW_SIZE) return false;
+
+            // Normalize MIME type: strip parameters and lowercase
+            const baseType = contentType.split(';', 1)[0].trim().toLowerCase();
+
+            // Allowlist common raster image types; exclude SVG and other vector/complex formats
+            const allowedImageTypes = [
+                'image/jpeg',
+                'image/jpg',
+                'image/png',
+                'image/gif',
+                'image/webp',
+                'image/bmp'
+            ];
+
+            return allowedImageTypes.includes(baseType);
+        }
+
         // Render attachments using DOM APIs to prevent XSS via malicious filenames
         function renderAttachments() {
             if (!selectedEmail.attachments || selectedEmail.attachments.length === 0) {
@@ -878,14 +922,22 @@
             container.className = 'attachments-list';
 
             selectedEmail.attachments.forEach(att => {
+                const canPreview = isPreviewableImage(att.content_type, att.size);
+                const isImage = att.content_type?.startsWith('image/');
+                const attachmentUrl = `${API_BASE}/api/emails/${selectedEmail.id}/attachments/${encodeURIComponent(att.filename)}`;
+
                 const link = document.createElement('a');
-                link.className = 'attachment-item';
-                link.href = `${API_BASE}/api/emails/${selectedEmail.id}/attachments/${encodeURIComponent(att.filename)}`;
+                link.className = canPreview ? 'attachment-item with-preview' : 'attachment-item';
+                link.href = attachmentUrl;
                 link.download = att.filename;  // Set via DOM property, not attribute string
+
+                // Create header section (icon + info)
+                const header = document.createElement('div');
+                header.className = 'attachment-header';
 
                 const icon = document.createElement('span');
                 icon.className = 'attachment-icon';
-                icon.textContent = '📄';
+                icon.textContent = isImage ? '🖼️' : '📄';
 
                 const info = document.createElement('div');
                 info.className = 'attachment-info';
@@ -900,8 +952,27 @@
 
                 info.appendChild(name);
                 info.appendChild(size);
-                link.appendChild(icon);
-                link.appendChild(info);
+                header.appendChild(icon);
+                header.appendChild(info);
+                link.appendChild(header);
+
+                // Add image preview for safe, reasonably-sized images
+                if (canPreview) {
+                    const preview = document.createElement('img');
+                    preview.className = 'attachment-preview';
+                    // Use inline disposition for preview rendering
+                    preview.src = `${attachmentUrl}?inline=1`;
+                    preview.alt = att.filename;
+                    preview.loading = 'lazy';
+                    preview.referrerPolicy = 'no-referrer';
+                    // Handle failed image loads gracefully
+                    preview.onerror = () => {
+                        preview.style.display = 'none';
+                        link.classList.remove('with-preview');
+                    };
+                    link.appendChild(preview);
+                }
+
                 container.appendChild(link);
             });
 

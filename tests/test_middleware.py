@@ -198,3 +198,39 @@ class TestMiddlewareIntegration:
         """Test mailview_store property returns None when disabled."""
         app = create_app({"enabled": False})
         assert app.mailview_store is None
+
+
+class TestNonHttpScopes:
+    """Tests for non-HTTP scope types (websocket, lifespan)."""
+
+    async def test_websocket_passthrough(self, temp_db_path):
+        """Test websocket scopes pass through to wrapped app."""
+        calls = []
+
+        async def mock_app(scope, _receive, _send):
+            calls.append(scope["type"])
+
+        app = MailviewMiddleware(mock_app, enabled=True, db_path=temp_db_path)
+
+        # Simulate a websocket scope
+        scope = {"type": "websocket", "path": "/_mail/ws"}
+        await app(scope, None, None)
+
+        # Should pass through to wrapped app
+        assert calls == ["websocket"]
+
+    async def test_lifespan_passthrough(self, temp_db_path):
+        """Test lifespan scopes pass through to wrapped app."""
+        calls = []
+
+        async def mock_app(scope, _receive, _send):
+            calls.append(scope["type"])
+
+        app = MailviewMiddleware(mock_app, enabled=True, db_path=temp_db_path)
+
+        # Simulate a lifespan scope
+        scope = {"type": "lifespan"}
+        await app(scope, None, None)
+
+        # Should pass through to wrapped app
+        assert calls == ["lifespan"]

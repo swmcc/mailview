@@ -2,11 +2,13 @@
 
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from starlette.routing import Router
 from starlette.testclient import TestClient
 
+import mailview.router as router_module
 from mailview.models import Attachment, Email
 from mailview.router import MailviewRouter, create_routes
 from mailview.store import EmailStore
@@ -319,3 +321,43 @@ class TestIndexUI:
         assert "attachments-list" in html
         assert "attachment-preview" in html
         assert "with-preview" in html
+
+
+class TestIndexUINotFound:
+    """Tests for UI index when HTML file is missing."""
+
+    def test_index_returns_404_when_ui_missing(self, store):
+        """Test that index returns 404 when UI HTML is not found."""
+        # Clear the cache and patch to return empty
+        router_module._UI_HTML_CACHE = None
+        with patch.object(Path, "exists", return_value=False):
+            # Force reload of UI HTML
+            router_module._UI_HTML_CACHE = None
+            router = MailviewRouter(store=store)
+            app = Router(routes=router.routes)
+            client = TestClient(app, raise_server_exceptions=False)
+
+            # Need to reset cache for test
+            router_module._UI_HTML_CACHE = None
+            with patch.object(Path, "exists", return_value=False):
+                response = client.get("/_mail")
+                assert response.status_code == 404
+                assert "UI not found" in response.text
+
+        # Reset cache after test
+        router_module._UI_HTML_CACHE = None
+
+    def test_index_returns_404_when_ui_empty(self, store):
+        """Test that index returns 404 when UI HTML is empty."""
+        # Clear the cache and set to empty
+        router_module._UI_HTML_CACHE = ""
+        router = MailviewRouter(store=store)
+        app = Router(routes=router.routes)
+        client = TestClient(app, raise_server_exceptions=False)
+
+        response = client.get("/_mail")
+        assert response.status_code == 404
+        assert "UI not found" in response.text
+
+        # Reset cache after test
+        router_module._UI_HTML_CACHE = None

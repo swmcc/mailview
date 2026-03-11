@@ -55,7 +55,7 @@ Mailview provides drop-in email backends that intercept outgoing emails instead 
 
 ```python
 # FastAPI-Mail
-from mailview.backends import MailviewBackend
+from mailview.backend import MailviewBackend
 from fastapi_mail import FastMail, ConnectionConfig
 
 config = ConnectionConfig(

@@ -3,6 +3,7 @@ GREEN := $(shell tput -Txterm setaf 2)
 YELLOW := $(shell tput -Txterm setaf 3)
 RESET := $(shell tput -Txterm sgr0)
 VENV := .venv/bin/activate
+DEPS_MARKER := .venv/.deps-installed
 
 .DEFAULT_GOAL := help
 
@@ -10,33 +11,41 @@ VENV := .venv/bin/activate
 .PHONY: local.install
 
 $(VENV):
-	@echo "$(GREEN)Creating venv and installing $(APP_NAME) with dev dependencies...$(RESET)"
+	@echo "$(GREEN)Creating venv...$(RESET)"
 	uv venv
-	uv pip install -e ".[dev]"
 
-local.install: $(VENV) ## Create venv and install with dev dependencies
+$(DEPS_MARKER): $(VENV) pyproject.toml
+	@echo "$(GREEN)Installing $(APP_NAME) with dev dependencies...$(RESET)"
+	uv pip install -e ".[dev]"
+	@touch $(DEPS_MARKER)
+
+local.install: $(DEPS_MARKER) ## Create venv and install with dev dependencies
 	@echo "$(GREEN)Done! Run 'source .venv/bin/activate' to activate$(RESET)"
 
 # 🧪 Testing
-.PHONY: local.test local.test.cov
+.PHONY: local.test local.test.cov local.bench
 
-local.test: $(VENV) ## Run tests
+local.test: $(DEPS_MARKER) ## Run tests
 	@echo "$(GREEN)Running tests...$(RESET)"
-	.venv/bin/pytest
+	.venv/bin/pytest --benchmark-skip
 
-local.test.cov: $(VENV) ## Run tests with coverage
+local.test.cov: $(DEPS_MARKER) ## Run tests with coverage
 	@echo "$(GREEN)Running tests with coverage...$(RESET)"
-	.venv/bin/pytest --cov=mailview --cov-report=html --cov-report=term
+	.venv/bin/pytest --cov=mailview --cov-report=html --cov-report=term --benchmark-skip
+
+local.bench: $(DEPS_MARKER) ## Run performance benchmarks
+	@echo "$(GREEN)Running benchmarks...$(RESET)"
+	.venv/bin/pytest tests/performance/ -v --benchmark-only
 
 # 🔍 Linting & Security
 .PHONY: local.lint local.security
 
-local.lint: $(VENV) ## Run linter
+local.lint: $(DEPS_MARKER) ## Run linter
 	@echo "$(GREEN)Running ruff...$(RESET)"
 	.venv/bin/ruff check .
 	.venv/bin/ruff format --check .
 
-local.security: $(VENV) ## Run security scan
+local.security: $(DEPS_MARKER) ## Run security scan
 	@echo "$(GREEN)Running bandit...$(RESET)"
 	.venv/bin/bandit -r mailview -ll
 

@@ -32,7 +32,7 @@ jobs:
           ruff format --check .
 
       - name: Run tests
-        run: pytest --cov=mailview --cov-report=xml
+        run: pytest --cov=mailview --cov-report=xml --benchmark-skip
 
       - name: Upload coverage
         if: matrix.python-version == '3.11'

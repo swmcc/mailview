@@ -117,6 +117,15 @@ Mailview **will not activate** unless it detects a development environment. It c
 
 To be extra safe, don't include `mailview` in your production dependencies.
 
+### Network Binding Warning
+
+Mailview has no authentication. If your dev server binds to `0.0.0.0` (all interfaces) instead of `127.0.0.1` (localhost only), anyone on your local network can access `/_mail` and view captured emails.
+
+For local development, prefer:
+```bash
+uvicorn app:app --host 127.0.0.1 --port 8000
+```
+
 ## Framework Support
 
 | Framework | Status |

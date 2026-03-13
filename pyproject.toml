@@ -46,6 +46,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/swmcc/mailview"
+Documentation = "https://github.com/swmcc/mailview#readme"
 Repository = "https://github.com/swmcc/mailview"
 Issues = "https://github.com/swmcc/mailview/issues"
 

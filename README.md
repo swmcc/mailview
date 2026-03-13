@@ -1,7 +1,7 @@
 # Mailview
 
 <p align="center">
-  <img src="assets/logo.svg" alt="Mailview" width="800">
+  <img src="https://raw.githubusercontent.com/swmcc/mailview/main/assets/logo.svg" alt="Mailview" width="800">
 </p>
 
 <p align="center">
@@ -83,16 +83,16 @@ Clear all emails with the delete button or `DELETE /_mail/api/emails`.
 ### Screenshots
 
 **Source Tab**
-![Source Tab](docs/screenshots/detail-source-tab.png)
+![Source Tab](https://raw.githubusercontent.com/swmcc/mailview/main/docs/screenshots/detail-source-tab.png)
 
 **Headers Table**
-![Headers Table](docs/screenshots/detail-headers-table.png)
+![Headers Table](https://raw.githubusercontent.com/swmcc/mailview/main/docs/screenshots/detail-headers-table.png)
 
 **Text Tab**
-![Text Tab](docs/screenshots/detail-text-tab.png)
+![Text Tab](https://raw.githubusercontent.com/swmcc/mailview/main/docs/screenshots/detail-text-tab.png)
 
 **Copy Button**
-![Copy Button](docs/screenshots/detail-copy-button.png)
+![Copy Button](https://raw.githubusercontent.com/swmcc/mailview/main/docs/screenshots/detail-copy-button.png)
 
 ## Configuration
 

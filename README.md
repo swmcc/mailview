@@ -126,6 +126,12 @@ To be extra safe, don't include `mailview` in your production dependencies.
 | Django | 🔜 Planned |
 | Flask | 🔜 Planned |
 
+## Requirements
+
+- **Python**: 3.11+
+- **Starlette**: 0.40.0+
+- **FastAPI**: 0.115.5+ (if using FastAPI)
+
 ## API Endpoints
 
 The UI is powered by a simple JSON API:

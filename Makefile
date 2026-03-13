@@ -55,6 +55,33 @@ local.security: $(DEPS_MARKER) ## Run security scan
 local.check: local.lint local.security local.test ## Run all checks (lint + security + test)
 	@echo "$(GREEN)All checks passed!$(RESET)"
 
+# 📦 Release
+.PHONY: release.build release.check release.test release.publish
+
+release.build: $(DEPS_MARKER) ## Build package (sdist + wheel)
+	@echo "$(GREEN)Cleaning dist/...$(RESET)"
+	rm -rf dist/
+	@echo "$(GREEN)Building package...$(RESET)"
+	.venv/bin/python -m build
+	@echo "$(GREEN)Built:$(RESET)"
+	@ls -la dist/
+
+release.check: release.build ## Validate package with twine
+	@echo "$(GREEN)Checking package...$(RESET)"
+	.venv/bin/twine check dist/*
+
+release.test: release.check ## Upload to TestPyPI
+	@echo "$(YELLOW)Uploading to TestPyPI...$(RESET)"
+	.venv/bin/twine upload --repository testpypi dist/*
+	@echo "$(GREEN)Done! Test with:$(RESET)"
+	@echo "  pip install --index-url https://test.pypi.org/simple/ mailview"
+
+release.publish: release.check ## Upload to PyPI (production)
+	@echo "$(YELLOW)Uploading to PyPI...$(RESET)"
+	.venv/bin/twine upload dist/*
+	@echo "$(GREEN)Published! Install with:$(RESET)"
+	@echo "  pip install mailview"
+
 # 📖 Help
 .PHONY: help
 

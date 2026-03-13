@@ -21,13 +21,18 @@ Personal checklist for releasing new versions of mailview.
   git tag vX.Y.Z
   git push origin main --tags
   ```
-- [ ] Build package:
+- [ ] Build and validate package:
   ```bash
-  python -m build
+  make release.check
+  ```
+- [ ] (Optional) Test on TestPyPI first:
+  ```bash
+  make release.test
+  pip install --index-url https://test.pypi.org/simple/ mailview
   ```
 - [ ] Upload to PyPI:
   ```bash
-  python -m twine upload dist/*
+  make release.publish
   ```
 - [ ] Create GitHub release from tag (copy changelog section as notes)
 

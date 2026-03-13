@@ -55,32 +55,21 @@ local.security: $(DEPS_MARKER) ## Run security scan
 local.check: local.lint local.security local.test ## Run all checks (lint + security + test)
 	@echo "$(GREEN)All checks passed!$(RESET)"
 
-# 📦 Release (CI publishes automatically, these are for local testing/fallback)
-.PHONY: release.build release.check release.test release.publish
+# 📦 Release
+.PHONY: release
 
-release.build: $(DEPS_MARKER) ## Build package (sdist + wheel)
-	@echo "$(GREEN)Cleaning dist/...$(RESET)"
-	rm -rf dist/
-	@echo "$(GREEN)Building package...$(RESET)"
-	.venv/bin/python -m build
-	@echo "$(GREEN)Built:$(RESET)"
-	@ls -la dist/
+VERSION := $(shell grep -m1 'version = ' pyproject.toml | cut -d'"' -f2)
 
-release.check: release.build ## Validate package with twine
-	@echo "$(GREEN)Checking package...$(RESET)"
-	.venv/bin/twine check dist/*
-
-release.test: release.check ## Upload to TestPyPI (manual fallback)
-	@echo "$(YELLOW)Uploading to TestPyPI...$(RESET)"
-	.venv/bin/twine upload --repository testpypi dist/*
-	@echo "$(GREEN)Done! Test with:$(RESET)"
-	@echo "  pip install --index-url https://test.pypi.org/simple/ mailview"
-
-release.publish: release.check ## Upload to PyPI (manual fallback)
-	@echo "$(YELLOW)Uploading to PyPI...$(RESET)"
-	.venv/bin/twine upload dist/*
-	@echo "$(GREEN)Published! Install with:$(RESET)"
-	@echo "  pip install mailview"
+release: ## Tag and push release (triggers CI publish to PyPI)
+	@echo "$(YELLOW)Creating release v$(VERSION)...$(RESET)"
+	@if git rev-parse v$(VERSION) >/dev/null 2>&1; then \
+		echo "$(YELLOW)Tag v$(VERSION) already exists!$(RESET)"; \
+		exit 1; \
+	fi
+	git tag v$(VERSION)
+	git push origin v$(VERSION)
+	@echo "$(GREEN)Tag v$(VERSION) pushed! GitHub Actions will publish to PyPI.$(RESET)"
+	@echo "  Watch: https://github.com/swmcc/mailview/actions"
 
 # 📖 Help
 .PHONY: help

@@ -12,18 +12,16 @@ Personal checklist for releasing new versions of mailview.
   - [ ] Move items from `[Unreleased]` to new version section
   - [ ] Add release date
   - [ ] Add comparison link at bottom of file
-- [ ] Commit: `git commit -am "Release vX.Y.Z"`
+- [ ] Commit and merge via PR (main is protected)
 
 ## Release
 
-Push the tag - GitHub Actions handles the rest:
-
 ```bash
-git tag vX.Y.Z
-git push origin main --tags
+git checkout main && git pull
+make release
 ```
 
-This triggers `.github/workflows/release.yml` which:
+This tags and pushes, triggering `.github/workflows/release.yml` which:
 1. Runs tests
 2. Builds the package
 3. Publishes to PyPI (via Trusted Publishers)
@@ -36,15 +34,6 @@ This triggers `.github/workflows/release.yml` which:
 - [ ] Test install: `pip install mailview==X.Y.Z`
 - [ ] Bump version in `pyproject.toml` to next dev version (e.g., `0.2.0`)
 - [ ] Add new `[Unreleased]` section to CHANGELOG.md
-
-## Manual Release (fallback)
-
-If GitHub Actions fails, use the Makefile targets:
-
-```bash
-make release.check    # Build and validate
-make release.publish  # Upload to PyPI (requires ~/.pypirc)
-```
 
 ## Version Numbering (SemVer)
 

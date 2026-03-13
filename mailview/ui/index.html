@@ -858,7 +858,8 @@
                 case 'html':
                     body.className = 'detail-body html-view';
                     // Sandbox iframe to prevent script execution and isolate email content
-                    body.innerHTML = `<iframe src="${API_BASE}/api/emails/${selectedEmail.id}/html" sandbox="allow-same-origin" referrerpolicy="no-referrer"></iframe>`;
+                    // Note: avoid allow-same-origin which would let iframe access parent's cookies/localStorage
+                    body.innerHTML = `<iframe src="${API_BASE}/api/emails/${selectedEmail.id}/html" sandbox referrerpolicy="no-referrer"></iframe>`;
                     break;
                 case 'text':
                     body.className = 'detail-body';

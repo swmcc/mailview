@@ -206,6 +206,16 @@ class TestGetAttachment:
         assert response.status_code == 404
         assert response.json()["error"] == "Email not found"
 
+    async def test_filename_with_slash_rejected(self, client, store, sample_email):
+        """Test that filenames with path separators are rejected."""
+        await store.save(sample_email)
+
+        # Filenames containing / should be rejected (Starlette may also block some)
+        url = "/_mail/api/emails/test-email-123/attachments//etc/passwd"
+        response = client.get(url)
+        assert response.status_code == 400
+        assert response.json()["error"] == "Invalid filename"
+
 
 class TestDeleteEmail:
     """Tests for DELETE /emails/{id} endpoint."""
@@ -321,6 +331,17 @@ class TestIndexUI:
         assert "attachments-list" in html
         assert "attachment-preview" in html
         assert "with-preview" in html
+
+    def test_iframe_sandbox_secure(self, client):
+        """Test that iframe sandbox doesn't allow same-origin access."""
+        response = client.get("/_mail")
+        html = response.text
+        # Iframe should have sandbox attribute but NOT allow-same-origin
+        # which would let malicious email HTML access parent's cookies/localStorage
+        assert "sandbox" in html
+        # Check the actual sandbox attribute value (not comments)
+        # The iframe should use 'sandbox' or 'sandbox=""', not allow-same-origin
+        assert 'sandbox="allow-same-origin"' not in html
 
 
 class TestIndexUINotFound:

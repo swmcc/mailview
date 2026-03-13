@@ -139,6 +139,10 @@ class MailviewRouter:
         email_id = request.path_params["email_id"]
         filename = request.path_params["filename"]
 
+        # Validate filename to prevent path traversal attempts
+        if "/" in filename or "\\" in filename or filename == "..":
+            return JSONResponse({"error": "Invalid filename"}, status_code=400)
+
         # Check email exists first for clearer error messages
         email = await self.store.get_by_id(email_id)
         if email is None:

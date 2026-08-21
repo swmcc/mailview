@@ -101,9 +101,9 @@ Mailview works with zero configuration, but you can customise if needed:
 ```python
 app.add_middleware(
     MailviewMiddleware,
-    mount_path="/_mail",        # Change the UI path (default: /_mail)
+    mount_path="/_mail",  # Change the UI path (default: /_mail)
     db_path="/custom/path.db",  # Custom SQLite location (default: /tmp/mailview/mailview.db)
-    enabled=True,               # Force enable/disable (default: auto-detect dev environment)
+    enabled=True,  # Force enable/disable (default: auto-detect dev environment)
 )
 ```
 

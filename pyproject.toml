@@ -39,7 +39,7 @@ dev = [
     "pytest-benchmark>=4.0",
     "pytest-cov>=4.0",
     "httpx>=0.24",
-    "ruff>=0.1",
+    "ruff>=0.16,<0.17",
     "bandit>=1.7",
     "fastapi>=0.115.5",
 ]
